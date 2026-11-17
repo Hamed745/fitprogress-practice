@@ -1,18 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import { pool } from './db.js';
-
-// Dates are strictly validated to prevent PostgreSQL from silently normalizing them.
-export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((date) => {
-  const parsed = new Date(`${date}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
-}, 'Invalid calendar date');
-
-export const bodyWeightSchema = z.object({
-  measuredOn: dateSchema,
-  weightKg: z.number().finite().positive().max(1000),
-  note: z.string().max(300).default(''),
-});
+import { bodyWeightSchema } from './body-weight-schema.js';
 const publicColumns = `id, to_char(measured_on, 'YYYY-MM-DD') AS "measuredOn",
   weight_kg::float AS "weightKg", note`;
 const idNumber = (id:string) => {

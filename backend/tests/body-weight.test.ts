@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { bodyWeightSchema, dateSchema } from '../src/body-weight.ts';
+import { bodyWeightSchema, dateSchema } from '../src/body-weight-schema.ts';
 
 test('valid calendar dates including leap day',()=>{
   assert.equal(dateSchema.safeParse('2024-02-29').success,true);
