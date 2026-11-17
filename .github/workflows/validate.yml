@@ -38,7 +38,8 @@ jobs:
           exit 1
       - name: API integration tests (CRUD and invalid update)
         working-directory: backend
-        run: npm run test:api
+        run: |
+          npm run test:api || { echo '--- API server logs ---'; cat /tmp/fitprogress-api.log; exit 1; }
       - name: Frontend dependencies
         working-directory: frontend
         run: npm ci
