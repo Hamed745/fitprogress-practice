@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Dumbbell, Flame, Layers3, Menu, Pencil, Plus, Save, Search, Sparkles, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { LogOut, LockKeyhole, Mail, UserRound, Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Dumbbell, Flame, Layers3, Menu, Pencil, Plus, Save, Search, Sparkles, Trash2, X } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { api } from './api';
+import { api, type Account } from './api';
 import type { Exercise, ExerciseSet, Template, ViewName, Workout } from './types';
 import { currentAndPrevious, filterWorkoutsByDate, maxSetWeight, personalBest, progress, volume, weeklyMuscles } from './stats';
 import { fmtDate, fmtMonth, fmtNumber, languageKey, tr, type Language } from './i18n';
@@ -19,6 +19,15 @@ function StatCard({title,value,subtitle,icon:Icon,tone='neutral'}:{title:string;
 function EmptyState({icon:Icon,title,subtitle,onClick,action}:{icon:typeof Activity;title:string;subtitle:string;onClick?:()=>void;action?:string}){return <div className="empty"><div className="empty-icon"><Icon size={26}/></div><strong>{title}</strong><p>{subtitle}</p>{onClick&&<button className="btn btn-primary" onClick={onClick}>{action||'Добавить'} <ArrowRight size={16}/></button>}</div>}
 
 export default function App(){
+  const [user,setUser]=useState<Account|null>(null);
+  const refreshSerial=useRef(0);
+  const [authLoading,setAuthLoading]=useState(true);
+  const [authMode,setAuthMode]=useState<'login'|'register'>('login');
+  const [authName,setAuthName]=useState('');
+  const [authEmail,setAuthEmail]=useState('');
+  const [authPassword,setAuthPassword]=useState('');
+  const [authError,setAuthError]=useState('');
+  const [authBusy,setAuthBusy]=useState(false);
   const [view,setView]=useState<ViewName>('dashboard');
   const [language,setLanguage]=useState<Language>(initialLanguage);
   const [workouts,setWorkouts]=useState<Workout[]>([]);
@@ -53,14 +62,42 @@ export default function App(){
   useEffect(()=>{try{localStorage.setItem(languageKey,language)}catch{/* private mode */}document.documentElement.lang=language;},[language]);
 
   const refresh=useCallback(async()=>{
+    const serial=++refreshSerial.current;
     try {
       const [w,e,t]=await Promise.all([api.workouts(),api.exercises(),api.templates()]);
+      if (serial!==refreshSerial.current) return;
       setWorkouts(w);setExercises(e);setTemplates(t);
-      setSelectedExercise(id=>id||e[0]?.id||0);setError('');
-    }catch(e){setError(e instanceof Error?e.message:'Не удалось загрузить данные');}
-    finally {setPending(false);}
+      setSelectedExercise(id=>e.some(item=>item.id===id)?id:e[0]?.id||0);setError('');
+    }catch(e){if(serial===refreshSerial.current)setError(e instanceof Error?e.message:'Не удалось загрузить данные');}
+    finally {if(serial===refreshSerial.current)setPending(false);}
   },[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  // Restore only the server-validated HttpOnly-cookie session; never store credentials in localStorage.
+  useEffect(()=>{
+    let alive=true;
+    api.me().then(account=>{if(alive)setUser(account)}).catch(()=>{if(alive)setUser(null)}).finally(()=>{if(alive)setAuthLoading(false)});
+    return ()=>{alive=false};
+  },[]);
+  useEffect(()=>{if(user){setPending(true);void refresh();}},[user?.id,refresh]);
+  useEffect(()=>{
+    const expired=()=>{refreshSerial.current++;setUser(null);setWorkouts([]);setExercises([]);setTemplates([]);setAuthError(t('Сессия истекла. Войдите снова.'));};
+    window.addEventListener('fitprogress:session-expired',expired);
+    return ()=>window.removeEventListener('fitprogress:session-expired',expired);
+  },[language]);
+  async function submitAuth(event:FormEvent){
+    event.preventDefault();setAuthBusy(true);setAuthError('');
+    try {
+      const account=authMode==='login'
+        ? await api.login({email:authEmail,password:authPassword})
+        : await api.register({name:authName,email:authEmail,password:authPassword});
+      setAuthPassword('');setUser(account);setView('dashboard');setPending(true);
+    }catch(error){setAuthError(error instanceof Error?error.message:t('Ошибка входа'));}
+    finally{setAuthBusy(false);}
+  }
+  async function logout(){
+    try{await api.logout();}catch(error){setError(error instanceof Error?error.message:'Ошибка выхода');return;}
+    refreshSerial.current++;setUser(null);setWorkouts([]);setExercises([]);setTemplates([]);setSelectedExercise(0);
+    setEditor(false);setEditingWorkoutId(null);setNotice('');setError('');setAuthPassword('');
+  }
   const stats=useMemo(()=>currentAndPrevious(workouts),[workouts]);
   const muscleData=useMemo(()=>weeklyMuscles(workouts,exercises).map(row=>({...row,name:display(row.name)})),[workouts,exercises,language]);
   const timeline=useMemo(()=>progress(workouts,selectedExercise).map(row=>({...row,date:d(row.rawDate)})),[workouts,selectedExercise,language]);
@@ -117,6 +154,22 @@ export default function App(){
   }
   const currentMonth=fmtMonth(language);
 
+  if(authLoading)return <div className="auth-page"><div className="auth-card"><div className="auth-brand"><Activity size={24}/> FitProgress</div><p>{t('Загрузка...')}</p></div></div>;
+  if(!user)return <div className="auth-page">
+    <form className="auth-card" onSubmit={submitAuth}>
+      <div className="auth-brand"><Activity size={28}/> Fit<span>Progress</span></div>
+      <div className="auth-lang lang-switch" role="group" aria-label="Language"><button type="button" className={language==='ru'?'selected':''} onClick={()=>setLanguage('ru')}>RU</button><button type="button" className={language==='en'?'selected':''} onClick={()=>setLanguage('en')}>EN</button></div>
+      <div className="overline">{t('ЛИЧНЫЙ КАБИНЕТ')}</div>
+      <h1>{t(authMode==='login'?'Вход в аккаунт':'Создать аккаунт')}</h1>
+      <p className="auth-description">{t('Ваши тренировки и шаблоны доступны только вам.')}</p>
+      {authError&&<p className="auth-error" role="alert">{t(authError)}</p>}
+      {authMode==='register'&&<label><span><UserRound size={16}/>{t('Имя')}</span><input autoComplete="name" minLength={2} maxLength={80} required value={authName} onChange={e=>setAuthName(e.target.value)} placeholder={t('Ваше имя')}/></label>}
+      <label><span><Mail size={16}/>Email</span><input type="email" autoComplete="email" maxLength={254} required value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="name@example.com"/></label>
+      <label><span><LockKeyhole size={16}/>{t('Пароль')}</span><input type="password" autoComplete={authMode==='login'?'current-password':'new-password'} minLength={authMode==='register'?10:1} maxLength={128} required value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder={t('Не менее 10 символов')}/></label>
+      <button type="submit" className="btn btn-primary auth-submit" disabled={authBusy}>{authBusy?t('Подождите...'):t(authMode==='login'?'Войти':'Зарегистрироваться')} <ArrowRight size={18}/></button>
+      <button type="button" className="auth-mode-toggle" onClick={()=>{setAuthMode(authMode==='login'?'register':'login');setAuthError('');setAuthPassword('')}}>{t(authMode==='login'?'Нет аккаунта? Зарегистрироваться':'Уже есть аккаунт? Войти')}</button>
+    </form>
+  </div>;
   return <div className="shell">
     {drawer&&<button className="mobile-shade" aria-label={t('Закрыть меню')} onClick={()=>setDrawer(false)}/>}
     <aside className={`sidebar ${drawer?'show':''}`}>
@@ -131,10 +184,10 @@ export default function App(){
       </nav>
       <div className="side-spacer"/>
       <div className="side-inset"><span className="side-inset-icon"><Sparkles size={18}/></span><strong>{t('Ваш прогресс — в цифрах')}</strong><p>{t('Записывайте тренировки, наблюдайте динамику и отмечайте рекорды.')}</p></div>
-      <div className="side-bottom"><span className="avatar">FP</span><div><strong>{t('Локальный профиль')}</strong><span>{t('Учебная версия · 2026')}</span></div></div>
+      <div className="side-bottom"><span className="avatar">{user.name.slice(0,2).toUpperCase()}</span><div><strong>{user.name}</strong><span>{user.email}</span></div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><button className="mobile-menu" onClick={()=>setDrawer(true)} aria-label={t('Открыть меню')}><Menu size={23}/></button><div className="crumb">{t('Рабочее пространство')} <span>/</span> <strong>{t(names[view])}</strong></div><div className="top-actions"><div className="lang-switch" role="group" aria-label="Language / Язык"><button type="button" className={language==='ru'?'selected':''} onClick={()=>setLanguage('ru')} aria-pressed={language==='ru'}>RU</button><button type="button" className={language==='en'?'selected':''} onClick={()=>setLanguage('en')} aria-pressed={language==='en'}>EN</button></div><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString(language==='en'?'en-US':'ru-RU',{day:'numeric',month:'long',year:'numeric'})}</span><span className="top-avatar">FP</span></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={()=>setDrawer(true)} aria-label={t('Открыть меню')}><Menu size={23}/></button><div className="crumb">{t('Рабочее пространство')} <span>/</span> <strong>{t(names[view])}</strong></div><div className="top-actions"><div className="lang-switch" role="group" aria-label="Language / Язык"><button type="button" className={language==='ru'?'selected':''} onClick={()=>setLanguage('ru')} aria-pressed={language==='ru'}>RU</button><button type="button" className={language==='en'?'selected':''} onClick={()=>setLanguage('en')} aria-pressed={language==='en'}>EN</button></div><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString(language==='en'?'en-US':'ru-RU',{day:'numeric',month:'long',year:'numeric'})}</span><span className="top-avatar">{user.name.slice(0,2).toUpperCase()}</span><button className="logout-button" type="button" onClick={()=>void logout()} title={t('Выйти')} aria-label={t('Выйти')}><LogOut size={17}/><span>{t('Выйти')}</span></button></div></header>
       <div className="content">
         {error&&<div className="alert" role="alert"><span>{t(error)}</span><button onClick={()=>setError('')}><X size={17}/></button></div>}
         {notice&&<div className="notice"><CheckCircle2 size={18}/>{t(notice)}<button aria-label={t('Закрыть')} onClick={()=>setNotice('')}><X size={16}/></button></div>}
@@ -179,7 +232,7 @@ export default function App(){
           {!templates.length?<div className="panel"><EmptyState icon={BookOpen} title={t('Шаблонов пока нет')} subtitle={t('Создайте тренировку, а затем нажмите на значок сохранения рядом с записью.')} onClick={()=>go('journal')} action={t('Перейти в дневник')}/></div>:<div className="template-grid">{templates.map(template=><article className="template-card" key={template.id}><div className="template-icon"><BookOpen size={26}/></div><span className="category">{t('ШАБЛОН ТРЕНИРОВКИ')}</span><h3>{display(template.name)}</h3><p>{display(template.sportType)}</p><div className="template-data"><span>{template.sets.length} {language==='en'?'sets':'подходов'}</span><span>{template.durationMinutes} {language==='en'?'min':'мин'}</span></div><div className="template-bottom"><button className="btn btn-primary" onClick={()=>openWorkout(template)}>{t('Использовать')} <ArrowRight size={16}/></button><button className="icon-button danger" title={t('Удалить шаблон')} onClick={()=>deleteTemplate(template.id)}><Trash2 size={19}/></button></div></article>)}</div>}
         </>}
         </>}
-        <footer><span>{t('FitProgress © 2026 · Учебный проект')}</span><span>{t('Данные хранятся локально в PostgreSQL')} <ArrowDownRight size={13}/></span></footer>
+        <footer><span>{t('FitProgress © 2026 · Учебный проект')}</span><span>{t('Данные привязаны к вашему аккаунту в PostgreSQL')} <ArrowDownRight size={13}/></span></footer>
       </div>
     </main>
   </div>;

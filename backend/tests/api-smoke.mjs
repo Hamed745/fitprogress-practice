@@ -1,47 +1,89 @@
 import assert from 'node:assert/strict';
+import pg from 'pg';
 
-// Run against a local API; modifies and removes ONLY a disposable test workout.
+// Use disposable PostgreSQL (CI runs Docker Compose). Creates two temporary accounts and cleans them up.
 const base=process.env.FITPROGRESS_API_URL||'http://127.0.0.1:3001';
-let createdId;
-let templateId;
-async function req(path,method='GET',body){
-  const response=await fetch(`${base}${path}`,{method,headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+const suffix=`${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+const aEmail=`test-a-${suffix}@example.org`;
+const bEmail=`test-b-${suffix}@example.org`;
+const passA='This is a test password A!';
+const passB='This is a test password B!';
+let idA,idB,ownerWorkout,ownerTemplate,privateExercise;
+async function req(path,method='GET',body,session='',origin){
+  const headers={...(body===undefined?{}:{'Content-Type':'application/json'}),...(session?{Cookie:session}:{}),...(origin?{Origin:origin}:{})};
+  const response=await fetch(`${base}${path}`,{method,headers,...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=response.status===204?null:await response.json();
-  return {status:response.status,data};
+  return {status:response.status,data,cookie:response.headers.get('set-cookie')?.split(';')[0]||''};
 }
-try{
-  const health=await req('/health');assert.equal(health.status,200);assert.equal(health.data.status,'ok');
-  const catalog=await req('/api/exercises');assert.equal(catalog.status,200);assert.ok(catalog.data.length>0,'Exercise catalog must have at least one item');
-  const exerciseId=catalog.data[0].id;
-  const payload={performedOn:'2026-11-17',sportType:'FitProgress automated smoke',durationMinutes:40,notes:'Disposable smoke test',sets:[{exerciseId,repetitions:10,weightKg:20,durationSeconds:0}]};
-  const created=await req('/api/workouts','POST',payload);assert.equal(created.status,201);createdId=created.data.id;
-  let workouts=await req('/api/workouts');let entry=workouts.data.find(w=>w.id===createdId);
-  assert.equal(entry.sets[0].weightKg,20);assert.equal(entry.sets[0].repetitions,10);
-  const invalid=await req(`/api/workouts/${createdId}`,'PUT',{...payload,sets:[{exerciseId,repetitions:10,weightKg:-9,durationSeconds:0}]});
-  assert.equal(invalid.status,400);
-  workouts=await req('/api/workouts');entry=workouts.data.find(w=>w.id===createdId);
-  assert.equal(entry.sets[0].weightKg,20,'Invalid update must keep original');
-  const updated=await req(`/api/workouts/${createdId}`,'PUT',{...payload,notes:'Edited by smoke test',sets:[{exerciseId,repetitions:8,weightKg:25,durationSeconds:0}]});
-  assert.equal(updated.status,200);
-  workouts=await req('/api/workouts');entry=workouts.data.find(w=>w.id===createdId);
-  assert.equal(entry.sets.length,1);assert.equal(entry.sets[0].weightKg,25);assert.equal(entry.sets[0].repetitions,8);
-  assert.equal(entry.notes,'Edited by smoke test');
-  const del=await req(`/api/workouts/${createdId}`,'DELETE');assert.equal(del.status,204);createdId=undefined;
-  const template=await req('/api/templates','POST',{
-    name:'FitProgress temporary template',sportType:'Test',durationMinutes:40,
-    sets:[{exerciseId,repetitions:10,weightKg:20,durationSeconds:0}]
-  });
-  assert.equal(template.status,201);
-  templateId=template.data.id;
-  const templates=await req('/api/templates');
-  assert.ok(templates.data.some(item=>item.id===templateId));
-  const templateDeleted=await req(`/api/templates/${templateId}`,'DELETE');
-  assert.equal(templateDeleted.status,204);
-  templateId=undefined;
-  console.log('PASS: health, catalog, workout create/invalid edit/edit/delete, template create/list/delete');
-}catch(err){console.error('FAIL:',err);process.exitCode=1;}
-finally{
-  if(createdId){try{await req(`/api/workouts/${createdId}`,'DELETE')}catch(err){console.error('Cleanup failed for test workout',createdId,err)}}
-  if(templateId){try{await req(`/api/templates/${templateId}`,'DELETE')}catch(err){console.error('Cleanup failed for test template',templateId,err)}}
-}
+const payload=(exerciseId)=>({performedOn:'2026-11-17',sportType:'FitProgress isolation test',durationMinutes:30,notes:'Disposable',sets:[{exerciseId,repetitions:10,weightKg:20,durationSeconds:0}]});
+try {
+  assert.equal((await req('/health')).status,200);
+  assert.equal((await req('/api/workouts')).status,401,'Anonymous workout listing must be denied');
+  assert.equal((await req('/api/templates')).status,401,'Anonymous templates must be denied');
+  assert.equal((await req('/api/exercises')).status,401,'Anonymous exercise listing must be denied');
 
+  let reg=await req('/api/auth/register','POST',{name:'Test Alice',email:aEmail.toUpperCase(),password:passA});
+  assert.equal(reg.status,201,'Register user A');idA=reg.data.id;
+  const aCookie=reg.cookie;
+  assert.match(aCookie,/fitprogress_session=/);
+  assert.equal((await req('/api/auth/me','GET',undefined,aCookie)).data.email,aEmail);
+  assert.equal((await req('/api/auth/register','POST',{name:'Test Alice',email:aEmail,password:passA})).status,409,'Duplicate email should be rejected');
+
+  reg=await req('/api/auth/register','POST',{name:'Test Bob',email:bEmail,password:passB});
+  assert.equal(reg.status,201,'Register user B');idB=reg.data.id;
+  const bCookie=reg.cookie;
+  assert.equal((await req('/api/workouts','GET',undefined,bCookie)).data.length,0);
+  const catalog=await req('/api/exercises','GET',undefined,aCookie);
+  assert.ok(catalog.data.length>0);
+  const sharedId=catalog.data[0].id;
+
+  const privateResult=await req('/api/exercises','POST',{name:'Alice private test '+suffix,muscleGroup:'Ноги',description:'Personal'},aCookie);
+  assert.equal(privateResult.status,201);privateExercise=privateResult.data.id;
+  const bobExercises=await req('/api/exercises','GET',undefined,bCookie);
+  assert.ok(!bobExercises.data.some(e=>e.id===privateExercise),'B must not see A exercise');
+
+  let created=await req('/api/workouts','POST',payload(privateExercise),aCookie);
+  assert.equal(created.status,201);ownerWorkout=created.data.id;
+  assert.equal((await req('/api/workouts','GET',undefined,bCookie)).data.length,0,'B must not list A workouts');
+  assert.equal((await req(`/api/workouts/${ownerWorkout}`,'PUT',payload(sharedId),bCookie)).status,404,'B must not edit A workout');
+  assert.equal((await req(`/api/workouts/${ownerWorkout}`,'DELETE',undefined,bCookie)).status,404,'B must not delete A workout');
+  assert.equal((await req('/api/workouts','POST',payload(privateExercise),bCookie)).status,400,'B must not use A private exercise');
+  assert.equal((await req('/api/workouts','POST',payload(sharedId),aCookie,'https://evil.example')).status,403,'Cross-site POST must be denied');
+
+  const updated={...payload(privateExercise),sets:[{exerciseId:privateExercise,repetitions:8,weightKg:25,durationSeconds:0}]};
+  assert.equal((await req(`/api/workouts/${ownerWorkout}`,'PUT',updated,aCookie)).status,200);
+  const entriesA=await req('/api/workouts','GET',undefined,aCookie);
+  const updatedEntry=entriesA.data.find(w=>w.id===ownerWorkout);
+  assert.equal(updatedEntry.sets[0].weightKg,25);
+
+  created=await req('/api/templates','POST',{name:'A private template',sportType:'Strength',durationMinutes:45,sets:payload(privateExercise).sets},aCookie);
+  assert.equal(created.status,201);ownerTemplate=created.data.id;
+  assert.ok(!(await req('/api/templates','GET',undefined,bCookie)).data.some(t=>t.id===ownerTemplate),'B must not list A templates');
+  assert.equal((await req(`/api/templates/${ownerTemplate}`,'DELETE',undefined,bCookie)).status,404,'B must not delete A templates');
+
+  assert.equal((await req('/api/auth/login','POST',{email:aEmail,password:'incorrect password'})).status,401);
+  const reLogin=await req('/api/auth/login','POST',{email:aEmail.toUpperCase(),password:passA});
+  assert.equal(reLogin.status,200);
+  assert.equal((await req('/api/workouts','GET',undefined,reLogin.cookie)).data.length,1,'Login restores owned data');
+  assert.equal((await req('/api/auth/logout','POST',undefined,reLogin.cookie)).status,200);
+  assert.equal((await req('/api/auth/me','GET',undefined,reLogin.cookie)).status,401,'Logout revokes session');
+  assert.equal((await req('/api/workouts','GET',undefined,aCookie)).data.length,1,'Logging out one session does not revoke others');
+
+  console.log('PASS: anonymous access denied, register/login/logout, private exercises, workout/template ownership, edit restrictions, CSRF, session persistence');
+}catch(error){console.error('FAIL:',error);process.exitCode=1;}
+finally{
+  const db = new pg.Client({connectionString:process.env.DATABASE_URL||'postgresql://fitprogress:fitprogress_local@localhost:5433/fitprogress'});
+  try{
+    await db.connect();
+    const ids=[idA,idB].filter(Number.isInteger);
+    if(ids.length){
+      await db.query('BEGIN');
+      await db.query('DELETE FROM workouts WHERE owner_id=ANY($1::int[])',[ids]);
+      await db.query('DELETE FROM templates WHERE owner_id=ANY($1::int[])',[ids]);
+      await db.query('DELETE FROM exercises WHERE owner_id=ANY($1::int[])',[ids]);
+      await db.query('DELETE FROM users WHERE id=ANY($1::int[])',[ids]);
+      await db.query('COMMIT');
+    }
+  }catch(error){await db.query('ROLLBACK').catch(()=>{});console.error('Test cleanup issue:',error);process.exitCode=1;}
+  finally{await db.end().catch(()=>{});}
+}

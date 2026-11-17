@@ -3,6 +3,25 @@ export type Language = 'ru' | 'en';
 export const languageKey = 'fitprogress-language';
 
 const english: Record<string, string> = {
+  'ЛИЧНЫЙ КАБИНЕТ':'PERSONAL ACCOUNT',
+  'Вход в аккаунт':'Sign in',
+  'Создать аккаунт':'Create account',
+  'Ваши тренировки и шаблоны доступны только вам.':'Your workouts and templates belong to your account only.',
+  'Имя':'Name', 'Ваше имя':'Your name', 'Пароль':'Password',
+  'Не менее 10 символов':'At least 10 characters',
+  'Войти':'Sign in','Зарегистрироваться':'Create account',
+  'Нет аккаунта? Зарегистрироваться':'New here? Create an account',
+  'Уже есть аккаунт? Войти':'Already registered? Sign in',
+  'Подождите...':'Please wait...', 'Загрузка...':'Loading...',
+  'Ошибка входа':'Sign-in failed',
+  'Выйти':'Sign out',
+  'Сессия истекла. Войдите снова.':'Your session has expired. Sign in again.',
+  'Необходимо войти в аккаунт':'Please sign in',
+  'Неверный email или пароль':'Incorrect email or password',
+  'Этот email уже зарегистрирован':'This email is already registered',
+  'Слишком много попыток входа. Попробуйте позже.':'Too many sign-in attempts. Try again later.',
+  'Данные привязаны к вашему аккаунту в PostgreSQL':'Your data is saved to your account in PostgreSQL',
+
   'Максимальный вес за месяц': 'Maximum weight this month',
   'Максимальный вес по группам мышц': 'Heaviest weight by muscle group',
   'Тип показателя': 'Metric type',

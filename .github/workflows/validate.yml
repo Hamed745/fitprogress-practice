@@ -36,10 +36,9 @@ jobs:
           done
           cat /tmp/fitprogress-api.log
           exit 1
-      - name: API integration tests (CRUD and invalid update)
+      - name: API integration tests (registration, isolation, CRUD, logout)
         working-directory: backend
-        run: |
-          npm run test:api || { echo '--- API server logs ---'; cat /tmp/fitprogress-api.log; exit 1; }
+        run: npm run test:api
       - name: Frontend dependencies
         working-directory: frontend
         run: npm ci
