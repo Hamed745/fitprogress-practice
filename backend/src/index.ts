@@ -139,6 +139,7 @@ app.delete<{Params:{id:string}}>('/api/templates/:id', async (request,reply) => 
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
   const pgError = error as { code?: string };
+  if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) return reply.code(error.statusCode).send({error:error.message});
   if (pgError.code === '23503') return reply.code(400).send({error:'Выбранное упражнение не найдено'});
   return reply.code(500).send({error:'Ошибка сервера. Проверьте журнал API.'});
 });

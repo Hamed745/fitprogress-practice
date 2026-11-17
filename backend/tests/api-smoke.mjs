@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const base=process.env.FITPROGRESS_API_URL||'http://127.0.0.1:3001';
 let createdId;
 async function req(path,method='GET',body){
-  const response=await fetch(`${base}${path}`,{method,headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  const response=await fetch(`${base}${path}`,{method,headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=response.status===204?null:await response.json();
   return {status:response.status,data};
 }

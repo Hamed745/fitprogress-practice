@@ -2,7 +2,7 @@ import type { Exercise, Workout, WorkoutDraft, Template, TemplateDraft } from '.
 
 async function request<T>(url:string, options?: RequestInit): Promise<T> {
   let response: Response;
-  try { response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...options?.headers}}); }
+  try { response=await fetch(url,{...options,headers:{...(options?.body===undefined?{}:{'Content-Type':'application/json'}),...options?.headers}}); }
   catch { throw new Error('Нет подключения к серверу API. Запустите backend.'); }
   if (!response.ok) {
     const error = await response.json().catch(()=>({error:response.statusText}));
