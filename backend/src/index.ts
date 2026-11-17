@@ -138,8 +138,8 @@ app.delete<{Params:{id:string}}>('/api/templates/:id', async (request,reply) => 
 
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
-  const pgError = error as { code?: string };
-  if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) return reply.code(error.statusCode).send({error:error.message});
+  const pgError = error as { code?: string; statusCode?: number; message?: string };
+  if (pgError.statusCode && pgError.statusCode >= 400 && pgError.statusCode < 500) return reply.code(pgError.statusCode).send({error:pgError.message || 'Invalid request'});
   if (pgError.code === '23503') return reply.code(400).send({error:'Выбранное упражнение не найдено'});
   return reply.code(500).send({error:'Ошибка сервера. Проверьте журнал API.'});
 });
