@@ -7,8 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:api": "node tests/api-smoke.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.1.0",

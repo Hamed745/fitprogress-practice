@@ -17,6 +17,7 @@ export const api = {
   addExercise:(data:Omit<Exercise,'id'>)=>request<Exercise>('/api/exercises',json(data)),
   workouts:()=>request<Workout[]>('/api/workouts'),
   addWorkout:(data:WorkoutDraft)=>request<{id:number}>('/api/workouts',json(data)),
+  updateWorkout:(id:number,data:WorkoutDraft)=>request<{id:number}>(`/api/workouts/${id}`,{method:'PUT',body:JSON.stringify(data)}),
   deleteWorkout:(id:number)=>request<void>(`/api/workouts/${id}`,{method:'DELETE'}),
   templates:()=>request<Template[]>('/api/templates'),
   addTemplate:(data:TemplateDraft)=>request<{id:number}>('/api/templates',json(data)),

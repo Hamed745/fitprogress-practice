@@ -78,6 +78,28 @@ app.post('/api/workouts', async (request, reply) => {
   } finally { client.release(); }
 });
 
+
+/** Update one workout and its sets atomically. */
+app.put<{Params:{id:string}}>('/api/workouts/:id', async (request, reply) => {
+  const id=Number(request.params.id);
+  if(!Number.isSafeInteger(id)||id<1)return inputError(reply,'Invalid workout ID');
+  const parsed=workoutSchema.safeParse(request.body);
+  if(!parsed.success)return inputError(reply,parsed.error.flatten());
+  const {performedOn,sportType,durationMinutes,notes,sets}=parsed.data;
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const existing=await client.query('SELECT id FROM workouts WHERE id=$1 FOR UPDATE',[id]);
+    if(existing.rowCount===0){await client.query('ROLLBACK');return reply.code(404).send({error:'Тренировка не найдена'});}
+    await client.query('UPDATE workouts SET performed_on=$1,sport_type=$2,duration_minutes=$3,notes=$4 WHERE id=$5',[performedOn,sportType,durationMinutes,notes,id]);
+    await client.query('DELETE FROM workout_sets WHERE workout_id=$1',[id]);
+    await insertSets(client,'workout_sets','workout_id',id,sets);
+    await client.query('COMMIT');
+    return reply.send({id});
+  }catch(error){await client.query('ROLLBACK');throw error;}
+  finally{client.release();}
+});
+
 app.delete<{Params:{id:string}}>('/api/workouts/:id', async (request, reply) => {
   const id = Number(request.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return inputError(reply,'Invalid workout ID');

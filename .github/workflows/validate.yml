@@ -1,0 +1,33 @@
+name: FitProgress checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-and-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Backend unit tests
+        working-directory: backend
+        run: npm test
+      - name: Backend build
+        working-directory: backend
+        run: npm run build
+      - name: Frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend unit tests
+        working-directory: frontend
+        run: npm test
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build

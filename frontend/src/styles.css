@@ -17,3 +17,14 @@
 .calculation-note span{font-size:11px;color:#63816e}
 .workout-volume-note{font-size:10px!important;color:#748c7a!important;margin:10px 0 0!important}
 @media(max-width:600px){.recent-val{min-width:80px}.calculation-note{padding:11px}}
+
+/* Clear metric names, optional calculated-volume explanation, and journal navigation. */
+.metric-switch{display:flex;gap:4px;padding:4px;background:#f3f7f3;border-radius:11px;margin:8px 0 13px;flex-wrap:wrap}
+.metric-switch button{border:0;background:transparent;color:#658476;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:750}
+.metric-switch button.selected{background:#fff;box-shadow:0 1px 8px #24463315;color:#255f49}
+.info-panel summary{cursor:pointer;font-size:12px;font-weight:750;color:#386c56}
+.journal-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:0 0 20px;padding:15px;background:#fff;border:1px solid var(--line);border-radius:13px}
+.journal-filters label{display:grid;gap:6px;font-size:11px;color:#657b6c;font-weight:750}
+.journal-filters input{width:auto;min-width:140px}
+.journal-filters span{font-size:11px;color:#859589;margin-left:auto;padding-bottom:12px}
+@media(max-width:620px){.journal-filters label{flex:1;min-width:120px}.journal-filters input{width:100%}.journal-filters span{margin:0}}

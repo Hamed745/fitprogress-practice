@@ -3,6 +3,23 @@ export type Language = 'ru' | 'en';
 export const languageKey = 'fitprogress-language';
 
 const english: Record<string, string> = {
+  'Максимальный вес за месяц': 'Maximum weight this month',
+  'Максимальный вес по группам мышц': 'Heaviest weight by muscle group',
+  'Тип показателя': 'Metric type',
+  'Вес (кг)': 'Weight (kg)',
+  'Объём (кг × повт.)': 'Volume (kg × reps)',
+  'кг × повт.': 'kg × reps',
+  'Подробнее о расчётном объёме': 'About calculated training volume',
+  'За месяц:': 'This month:',
+  'Ранее:': 'Previous:',
+  'Редактировать тренировку': 'Edit workout',
+  'Сохранить изменения': 'Save changes',
+  'Тренировка обновлена': 'Workout updated',
+  'С даты': 'From date',
+  'По дату': 'To date',
+  'Сбросить фильтр': 'Clear filters',
+  'записей': 'entries',
+
   'Обзор': 'Overview', 'Дневник': 'Journal', 'Упражнения': 'Exercises', 'Аналитика': 'Analytics', 'Шаблоны': 'Templates',
   'РАБОЧЕЕ ПРОСТРАНСТВО': 'WORKSPACE', 'Рабочее пространство': 'Workspace',
   'Ваш прогресс — в цифрах': 'Your progress, in numbers',
