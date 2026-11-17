@@ -48,3 +48,29 @@
 .logout-button:hover{background:#e1efe6}
 .side-bottom>div{min-width:0}.side-bottom strong,.side-bottom span:not(.avatar){display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
 @media(max-width:620px){.auth-card{padding:30px 22px}.auth-lang{top:28px;right:21px}.logout-button{padding:8px}.logout-button span{display:none}}
+
+/* Optional body-weight log: neutral presentation and private per-user history. */
+.weight-context{font-size:12px;color:#789385;margin:0 0 18px;line-height:1.6}
+.weight-form{margin:0 0 22px}
+.weight-empty{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:center;min-height:230px;text-align:center;color:#58856d}
+.weight-empty p{max-width:420px;color:#7a9383;line-height:1.6}
+.weight-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.weight-summary-item{display:flex;flex-direction:column;gap:7px;min-height:125px}
+.weight-summary-item span{font-size:12px;color:#688574}
+.weight-summary-item strong{font-size:25px;color:#264c3a}
+.weight-summary-item small{font-size:11px;color:#82998a}
+.weight-chart{height:260px!important}
+.weight-history{margin-top:18px}
+.weight-history-row{display:grid;grid-template-columns:130px 110px minmax(0,1fr) auto;gap:14px;align-items:center;border-top:1px solid #eef2ed;padding:13px 0}
+.weight-history-row strong{font-size:14px;color:#254834}
+.weight-history-note{font-size:12px;color:#718b78;overflow-wrap:anywhere}
+.weight-history-actions{display:flex;gap:5px}
+.monthly-volume{margin-top:20px}
+.monthly-volume h3{margin:7px 0 10px}
+.monthly-volume p{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:12px;color:#718878;margin:0}
+.monthly-volume strong{font-size:22px;color:#315f48}
+.records-panel{margin-top:18px}
+.records-table{display:grid;gap:0}
+.record-row{display:grid;grid-template-columns:minmax(0,1fr) 140px 110px;align-items:center;gap:16px;border-top:1px solid #eef2ed;padding:11px 0;font-size:12px}
+.record-row strong{color:#2c624c;text-align:right}.record-row small{text-align:right;color:#819888}
+@media(max-width:680px){.weight-summary{grid-template-columns:1fr}.weight-history-row{grid-template-columns:1fr auto}.weight-history-note{grid-column:1}.weight-history-actions{grid-column:2;grid-row:1 / span 2}.record-row{grid-template-columns:1fr auto}.record-row small{grid-column:1 / -1;text-align:left}}

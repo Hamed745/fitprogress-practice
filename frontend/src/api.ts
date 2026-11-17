@@ -1,4 +1,4 @@
-import type { Exercise, Workout, WorkoutDraft, Template, TemplateDraft } from './types';
+import type { Exercise, Workout, WorkoutDraft, Template, TemplateDraft, BodyWeightEntry, BodyWeightDraft } from './types';
 
 export type Account = { id:number; name:string; email:string };
 export type AuthDraft = { email:string; password:string };
@@ -36,4 +36,8 @@ export const api={
   templates:()=>request<Template[]>('/api/templates'),
   addTemplate:(data:TemplateDraft)=>request<{id:number}>('/api/templates',json(data)),
   deleteTemplate:(id:number)=>request<void>(`/api/templates/${id}`,{method:'DELETE'}),
+  bodyWeight:()=>request<BodyWeightEntry[]>('/api/body-weight'),
+  addBodyWeight:(data:BodyWeightDraft)=>request<BodyWeightEntry>('/api/body-weight',json(data)),
+  updateBodyWeight:(id:number,data:BodyWeightDraft)=>request<BodyWeightEntry>(`/api/body-weight/${id}`,{method:'PUT',body:JSON.stringify(data)}),
+  deleteBodyWeight:(id:number)=>request<void>(`/api/body-weight/${id}`,{method:'DELETE'}),
 };

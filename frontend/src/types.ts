@@ -4,4 +4,6 @@ export type Workout = { id:number; performedOn:string; sportType:string; duratio
 export type Template = { id:number; name:string; sportType:string; durationMinutes:number; sets:ExerciseSet[] };
 export type WorkoutDraft = Omit<Workout,'id'>;
 export type TemplateDraft = Omit<Template,'id'>;
-export type ViewName = 'dashboard' | 'journal' | 'exercises' | 'analytics' | 'templates';
+export type ViewName = 'dashboard' | 'journal' | 'exercises' | 'analytics' | 'templates' | 'bodyweight';
+export type BodyWeightEntry = {id:number;measuredOn:string;weightKg:number;note:string};
+export type BodyWeightDraft = Omit<BodyWeightEntry,'id'>;

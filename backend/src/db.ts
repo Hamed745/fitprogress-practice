@@ -59,6 +59,16 @@ export async function ensureSchema() {
       weight_kg NUMERIC(9,2) NOT NULL DEFAULT 0,
       duration_seconds INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS body_weight_entries (
+      id BIGSERIAL PRIMARY KEY,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      measured_on DATE NOT NULL,
+      weight_kg NUMERIC(6,2) NOT NULL CHECK (weight_kg > 0),
+      note VARCHAR(300) NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (owner_id, measured_on)
+    );
+    CREATE INDEX IF NOT EXISTS body_weight_owner_date_idx ON body_weight_entries(owner_id, measured_on DESC);
     ALTER TABLE exercises ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     ALTER TABLE exercises ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE workouts ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE;

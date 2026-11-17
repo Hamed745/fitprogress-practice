@@ -38,7 +38,18 @@ export function personalBest(workouts:Workout[],exerciseId:number) {
   return workouts.flatMap(w=>w.sets.filter(s=>s.exerciseId===exerciseId).map(s=>({date:w.performedOn,weight:s.weightKg}))).sort((a,b)=>b.weight-a.weight)[0];
 }
 
-/** Inclusive date filters for the journal; empty bounds mean all records. */
+/** Inclusive local date filters for the journal; empty bounds mean all dates. */
 export function filterWorkoutsByDate(workouts:Workout[], from:string, to:string):Workout[]{
   return workouts.filter(w=>(!from||w.performedOn>=from)&&(!to||w.performedOn<=to));
+}
+
+/** A dated best for every recorded exercise; unweighted activities use repetitions or duration instead of a misleading 0 kg. */
+export function exerciseRecords(workouts:Workout[], exercises:Exercise[]){
+  return exercises.flatMap(exercise=>{
+    const logged=workouts.flatMap(w=>w.sets.filter(s=>s.exerciseId===exercise.id).map(s=>({date:w.performedOn,set:s})));
+    if(!logged.length)return [];
+    const key=logged.some(x=>x.set.weightKg>0)?'weightKg':logged.some(x=>x.set.repetitions>0)?'repetitions':'durationSeconds';
+    const best=logged.sort((a,b)=>b.set[key]-a.set[key]||a.date.localeCompare(b.date))[0];
+    return [{exerciseId:exercise.id,name:exercise.name,value:best.set[key],date:best.date,unit:key==='weightKg'?'кг':key==='repetitions'?'повт.':'сек'}];
+  });
 }

@@ -5,6 +5,7 @@ import { pool, ensureSchema } from './db.js';
 import { exerciseSchema, workoutSchema, templateSchema } from './validation.js';
 import { allowedOrigin, authProblem, cookieHeader, createSession, findSession, hashPassword, limitLogin, loginSchema, normalizeEmail, parseCookie, registerSchema, resetLoginLimit, sessionHash, verifyPassword } from './auth.js';
 import type { PoolClient } from 'pg';
+import { bodyWeightRoutes } from './body-weight.js';
 
 const app = Fastify({ logger: true, bodyLimit: 64 * 1024 });
 const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', process.env.FRONTEND_ORIGIN].filter(Boolean) as string[];
@@ -200,6 +201,8 @@ app.delete<{Params:{id:string}}>('/api/templates/:id',async (request,reply)=>{
   if(!result.rowCount)return reply.code(404).send({error:'Шаблон не найден'});
   return reply.code(204).send();
 });
+
+bodyWeightRoutes(app);
 
 app.setErrorHandler((error,_request,reply)=>{
   app.log.error(error);

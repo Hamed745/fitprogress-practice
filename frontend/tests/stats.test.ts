@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currentAndPrevious, filterWorkoutsByDate, maxSetWeight, personalBest, progress, volume, weeklyMuscles } from '../src/stats.ts';
+import { currentAndPrevious, exerciseRecords, filterWorkoutsByDate, maxSetWeight, personalBest, progress, volume, weeklyMuscles } from '../src/stats.ts';
 import type { Workout, Exercise } from '../src/types.ts';
 
 const set=(weight:number,repetitions:number,exerciseId=1)=>({exerciseId,repetitions,weightKg:weight,durationSeconds:0});
@@ -48,4 +48,14 @@ test('language number and date formatting are locale-specific',()=>{
   assert.equal(fmtNumber('en',1234.5),'1,234.5');
   assert.equal(fmtNumber('ru',1234.5),'1 234,5');
   assert.ok(fmtDate('en','2026-11-17').includes('Nov'));
+});
+
+test('dated records include weighted and non-weighted exercises',()=>{
+  const data=[workout(1,'2026-11-15',[set(20,10),{exerciseId:2,repetitions:0,weightKg:0,durationSeconds:40}]),workout(2,'2026-11-17',[set(25,6),{exerciseId:2,repetitions:0,weightKg:0,durationSeconds:60}])];
+  const records=exerciseRecords(data,catalog);
+  assert.deepEqual(records.map(r=>[r.name,r.value,r.unit,r.date]),[['Squats',25,'кг','2026-11-17'],['Run',60,'сек','2026-11-17']]);
+});
+test('per-exercise progression preserves maximum and calculated volume separately',()=>{
+  const data=[workout(1,'2026-11-16',[set(20,10)]),workout(2,'2026-11-17',[set(25,4)])];
+  assert.deepEqual(progress(data,1).map(p=>[p.maxWeight,p.volume]),[[20,200],[25,100]]);
 });

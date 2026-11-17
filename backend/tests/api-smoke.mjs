@@ -21,6 +21,7 @@ try {
   assert.equal((await req('/api/workouts')).status,401,'Anonymous workout listing must be denied');
   assert.equal((await req('/api/templates')).status,401,'Anonymous templates must be denied');
   assert.equal((await req('/api/exercises')).status,401,'Anonymous exercise listing must be denied');
+  assert.equal((await req('/api/body-weight')).status,401,'Anonymous measurements must be denied');
 
   let reg=await req('/api/auth/register','POST',{name:'Test Alice',email:aEmail.toUpperCase(),password:passA});
   assert.equal(reg.status,201,'Register user A');idA=reg.data.id;
@@ -33,6 +34,20 @@ try {
   assert.equal(reg.status,201,'Register user B');idB=reg.data.id;
   const bCookie=reg.cookie;
   assert.equal((await req('/api/workouts','GET',undefined,bCookie)).data.length,0);
+  const measurementDate='2026-11-17';
+  const measure={measuredOn:measurementDate,weightKg:70.5,note:'private personal note'};
+  const addedMeasure=await req('/api/body-weight','POST',measure,aCookie);
+  assert.equal(addedMeasure.status,201,'A creates own measurement');
+  const measurementId=addedMeasure.data.id;
+  assert.equal((await req('/api/body-weight','GET',undefined,aCookie)).data.some(e=>e.id===measurementId),true);
+  assert.equal((await req('/api/body-weight','GET',undefined,bCookie)).data.length,0,'B must not see A measurement');
+  assert.equal((await req(`/api/body-weight/${measurementId}`,'PUT',{...measure,weightKg:71},bCookie)).status,404,'B cannot edit A measurement');
+  assert.equal((await req(`/api/body-weight/${measurementId}`,'DELETE',undefined,bCookie)).status,404,'B cannot delete A measurement');
+  assert.equal((await req('/api/body-weight','POST',measure,aCookie)).status,409,'duplicate date is rejected');
+  assert.equal((await req('/api/body-weight','POST',{measuredOn:'2026-02-29',weightKg:71},aCookie)).status,400,'invalid date');
+  assert.equal((await req(`/api/body-weight/${measurementId}`,'PUT',{...measure,weightKg:71.2},aCookie)).status,200);
+  assert.equal((await req('/api/body-weight','GET',undefined,aCookie)).data[0].weightKg,71.2);
+
   const catalog=await req('/api/exercises','GET',undefined,aCookie);
   assert.ok(catalog.data.length>0);
   const sharedId=catalog.data[0].id;
@@ -61,6 +76,8 @@ try {
   assert.ok(!(await req('/api/templates','GET',undefined,bCookie)).data.some(t=>t.id===ownerTemplate),'B must not list A templates');
   assert.equal((await req(`/api/templates/${ownerTemplate}`,'DELETE',undefined,bCookie)).status,404,'B must not delete A templates');
 
+  assert.equal((await req(`/api/body-weight/${measurementId}`,'DELETE',undefined,aCookie)).status,204,'A deletes own measurement');
+  assert.equal((await req('/api/body-weight','GET',undefined,aCookie)).data.length,0);
   assert.equal((await req('/api/auth/login','POST',{email:aEmail,password:'incorrect password'})).status,401);
   const reLogin=await req('/api/auth/login','POST',{email:aEmail.toUpperCase(),password:passA});
   assert.equal(reLogin.status,200);
