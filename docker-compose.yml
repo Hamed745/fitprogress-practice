@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fitprogress
+      POSTGRES_PASSWORD: fitprogress_local
+      POSTGRES_DB: fitprogress
+    ports:
+      - '5433:5432'
+    volumes:
+      - fitprogress_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fitprogress -d fitprogress']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+volumes:
+  fitprogress_pgdata:

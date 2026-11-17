@@ -1,0 +1,7 @@
+export type Exercise = { id:number; name:string; muscleGroup:string; description:string };
+export type ExerciseSet = { id?:number; exerciseId:number; exerciseName?:string; muscleGroup?:string; repetitions:number; weightKg:number; durationSeconds:number };
+export type Workout = { id:number; performedOn:string; sportType:string; durationMinutes:number; notes:string; sets:ExerciseSet[] };
+export type Template = { id:number; name:string; sportType:string; durationMinutes:number; sets:ExerciseSet[] };
+export type WorkoutDraft = Omit<Workout,'id'>;
+export type TemplateDraft = Omit<Template,'id'>;
+export type ViewName = 'dashboard' | 'journal' | 'exercises' | 'analytics' | 'templates';
