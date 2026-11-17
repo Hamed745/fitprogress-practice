@@ -22,6 +22,23 @@ jobs:
       - name: Backend build
         working-directory: backend
         run: npm run build
+      - name: Start disposable PostgreSQL database
+        run: docker compose up -d --wait
+      - name: Start API for integration checks
+        run: |
+          nohup node backend/dist/index.js > /tmp/fitprogress-api.log 2>&1 < /dev/null &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:3001/health; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/fitprogress-api.log
+          exit 1
+      - name: API integration tests (CRUD and invalid update)
+        working-directory: backend
+        run: npm run test:api
       - name: Frontend dependencies
         working-directory: frontend
         run: npm ci
