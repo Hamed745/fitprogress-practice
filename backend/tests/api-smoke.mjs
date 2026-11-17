@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 // Run against a local API; modifies and removes ONLY a disposable test workout.
 const base=process.env.FITPROGRESS_API_URL||'http://127.0.0.1:3001';
 let createdId;
+let templateId;
 async function req(path,method='GET',body){
   const response=await fetch(`${base}${path}`,{method,headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=response.status===204?null:await response.json();
@@ -26,6 +27,21 @@ try{
   assert.equal(entry.sets.length,1);assert.equal(entry.sets[0].weightKg,25);assert.equal(entry.sets[0].repetitions,8);
   assert.equal(entry.notes,'Edited by smoke test');
   const del=await req(`/api/workouts/${createdId}`,'DELETE');assert.equal(del.status,204);createdId=undefined;
-  console.log('PASS: health, catalog, create, invalid update protection, valid edit and deletion');
+  const template=await req('/api/templates','POST',{
+    name:'FitProgress temporary template',sportType:'Test',durationMinutes:40,
+    sets:[{exerciseId,repetitions:10,weightKg:20,durationSeconds:0}]
+  });
+  assert.equal(template.status,201);
+  templateId=template.data.id;
+  const templates=await req('/api/templates');
+  assert.ok(templates.data.some(item=>item.id===templateId));
+  const templateDeleted=await req(`/api/templates/${templateId}`,'DELETE');
+  assert.equal(templateDeleted.status,204);
+  templateId=undefined;
+  console.log('PASS: health, catalog, workout create/invalid edit/edit/delete, template create/list/delete');
 }catch(err){console.error('FAIL:',err);process.exitCode=1;}
-finally{if(createdId){try{await req(`/api/workouts/${createdId}`,'DELETE')}catch(err){console.error('Cleanup failed for test workout',createdId,err)}}}
+finally{
+  if(createdId){try{await req(`/api/workouts/${createdId}`,'DELETE')}catch(err){console.error('Cleanup failed for test workout',createdId,err)}}
+  if(templateId){try{await req(`/api/templates/${templateId}`,'DELETE')}catch(err){console.error('Cleanup failed for test template',templateId,err)}}
+}
+

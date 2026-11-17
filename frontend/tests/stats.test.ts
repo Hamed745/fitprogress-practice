@@ -36,3 +36,16 @@ test('personal records use weight instead of repetitions, and progression sorts 
   assert.equal(personalBest(data,1)?.weight,25);
   assert.deepEqual(progress(data,1).map(x=>x.maxWeight),[20,25]);
 });
+
+import { tr, fmtNumber, fmtDate } from '../src/i18n.ts';
+test('RU / EN switch translates analytics, journal controls and unit labels',()=>{
+  assert.equal(tr('en','Максимальный вес за месяц'),'Maximum weight this month');
+  assert.equal(tr('en','Редактировать тренировку'),'Edit workout');
+  assert.equal(tr('en','Объём (кг × повт.)'),'Volume (kg × reps)');
+  assert.equal(tr('ru','Редактировать тренировку'),'Редактировать тренировку');
+});
+test('language number and date formatting are locale-specific',()=>{
+  assert.equal(fmtNumber('en',1234.5),'1,234.5');
+  assert.equal(fmtNumber('ru',1234.5),'1 234,5');
+  assert.ok(fmtDate('en','2026-11-17').includes('Nov'));
+});
